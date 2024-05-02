@@ -38,9 +38,16 @@
       --graphic-height: 40px;
     }
 
-    #main {
+    .vertical {
       display: flex;
       flex-direction: column;
+      height: 100%;
+      width: 100%;
+    }
+
+    .horizontal {
+      display: flex;
+      width: 100%;
       height: 100%;
     }
 
@@ -87,6 +94,18 @@
     *:not(:defined) {
       /* prevents FOUC */
       display: none;
+    }
+
+    .tvg-logo {
+      width: 30px;
+    }
+
+    #streams {
+      display: none;
+    }
+
+    #streams[show] {
+      display: initial;
     }
   </style>
   <script>
@@ -147,28 +166,36 @@
       }
     }
 
-    function streamChange(e) {
-      const url = e.target.options[e.target.selectedIndex].value;
+    async function getStreams() {
+      let streams = Object.assign({}, 
+        await getStreamList("https://iptv-org.github.io/iptv/countries/uk.m3u")
+        // await getStreamList("https://raw.githubusercontent.com/iptv-org/iptv/master/streams/uk_bbc.m3u"),
+        // await getStreamList("https://raw.githubusercontent.com/iptv-org/iptv/master/streams/uk_rakuten.m3u"),
+        // await getStreamList("https://raw.githubusercontent.com/iptv-org/iptv/master/streams/uk.m3u"),
+      );
 
-      const fieldUrl  = document.getElementById('url');
+      streams = Object.fromEntries(Object.entries(streams).sort((a,b) => a[1].desc.localeCompare(b[1].desc)));
 
-      fieldUrl.value = url;
+      const selectStreams = document.getElementById("streams");
 
-      watchUrl();
+      Object.entries(streams)
+       .forEach(([streamId, stream]) => {
+         const item = document.createElement("md-list-item");
+         item.type = "button";
+         item.innerHTML = `<div>${stream.desc}</div><img class="tvg-logo" slot="start" src="${stream.logo}">`;
+         item.value = stream.url;
+         selectStreams.append(item);
+      });
     }
 
-    function getStreams() {
-      processStreams("https://raw.githubusercontent.com/iptv-org/iptv/master/streams/uk_bbc.m3u");
-      processStreams("https://raw.githubusercontent.com/iptv-org/iptv/master/streams/uk_rakuten.m3u");
-      processStreams("https://raw.githubusercontent.com/iptv-org/iptv/master/streams/uk.m3u");
-    }
-
-    async function processStreams(url) {
+    async function getStreamList(url) {
       const m3u = await (await fetch(url)).text();
 
-      const streams = document.getElementById("streams");
+      m3u.split("\n");
 
       const d = m3u.split("\n");
+
+      const streams = {};
 
       for (n = 0; n < d.length; n++) {
         const e = d[n];
@@ -176,24 +203,46 @@
         if (!e.startsWith("#EXTINF:")) continue;
 
         const ex = e.split(",");
-        const desc = ex[1];
+        const desc = ex[1].replace(" \[Geo-blocked\]", "");
+        const tvgId = e.match(/tvg-id="(.*?)"/)[1];
+        const logo = e.match(/tvg-logo="(.*?)"/)[1];
+
         const url = d[n+1];
 
-        const opt = document.createElement("md-select-option");
-        const optDesc = document.createElement("div");
-        optDesc.slot = "headline";
-        optDesc.innerText = desc;
-
-        opt.value = url;
-
-        opt.append(optDesc);
-
-        streams.append(opt);
+        if (streams[tvgId] === undefined) {
+          streams[tvgId] = {
+            desc: desc,
+            url: url,
+            logo: logo,
+          }
+        }
 
         n++;
       }
+
+      return streams;
     }
 
+    function setUrl(url) {
+      const fieldUrl  = document.getElementById('url');
+
+      fieldUrl.value = url;
+
+      watchUrl();
+    }
+
+    function streamChange(e) {
+      const button = e.target.closest("md-list-item");
+      setUrl(button.value);
+    }
+
+    function toggleChannels(e) {
+      const streams = document.getElementById("streams");
+      if (e.target.selected)
+        streams.setAttribute("show", "");
+      else
+        streams.removeAttribute("show");
+    }
   </script>
 </head>
 <body>
@@ -221,13 +270,16 @@
     </svg>
   </div>
 
-  <div id="main">
+  <div class="horizontal">
+    <md-list id="streams" onclick="streamChange(event)" style="overflow:auto;max-width: 300px;">
+    </md-list>
+  <div class="vertical">
     <div id="videoContainer">
       <video id="video" controls></video>
     </div>
 
     <div style="display:flex;align-items:center;column-gap:1em;justify-content:center;margin:1em 3em">
-      <md-filled-select id="streams" onchange="streamChange(event)"></md-filled-select>
+      <md-switch icons onchange="toggleChannels(event)"></md-switch>
       <md-filled-text-field id="url" label="url" style="flex:auto"></md-filled-text-field>
       <md-filled-button onclick="watchUrl()">Go</md-filled-button>
     </div>
@@ -257,6 +309,7 @@
         <img src="https://upload.wikimedia.org/wikipedia/commons/a/a3/BBC_Red_Button_2021.svg" style="padding:5px;height:calc(var(--graphic-height)-2.5px);background-color:white" />
       </md-text-button>
     </div>
+  </div>
   </div>
   <script>
     getStreams();
