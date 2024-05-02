@@ -1,7 +1,6 @@
 <!doctype html>
 <html>
 <head>
-  <meta name="viewport" content="width=device-width, minimum-scale=1, initial-scale=1, user-scalable=yes">
   <title>TV Player</title>
   <script type="importmap">
     {
@@ -143,11 +142,7 @@
 
       const video = document.getElementById('video');
 
-      const fieldUrl  = document.getElementById('url');
-
-      fieldUrl.value = url;
-
-      watchUrl();
+      setUrl(url);
 
       for(b of document.querySelectorAll("[channel]")) {
         b.removeAttribute("selected");
@@ -187,7 +182,7 @@
        .forEach(([streamId, stream]) => {
          const item = document.createElement("md-list-item");
          item.type = "button";
-         item.innerHTML = `<div>${stream.desc}</div><img class="tvg-logo" slot="start" src="${stream.logo}">`;
+         item.innerHTML = `<div>${stream.desc}</div><img class="tvg-logo" loading="lazy" slot="start" src="${stream.logo}">`;
          item.value = stream.url;
          selectStreams.append(item);
       });
