@@ -92,7 +92,7 @@
     }
 
     *:not(:defined) {
-      /* prevents FOUC */
+      /* prevents FOUC of web components */
       display: none;
     }
 
@@ -101,11 +101,17 @@
     }
 
     #streams {
-      display: none;
+      width: 0px;
+      overflow: auto;
+      transition: width .2s ease-in-out;
     }
 
     #streams[show] {
-      display: initial;
+      width: 400px;
+    }
+
+    md-list-item {
+      text-wrap: nowrap;
     }
   </style>
   <script>
@@ -169,11 +175,9 @@
     async function getStreams() {
       let streams = Object.assign({}, 
         await getStreamList("https://iptv-org.github.io/iptv/countries/uk.m3u")
-        // await getStreamList("https://raw.githubusercontent.com/iptv-org/iptv/master/streams/uk_bbc.m3u"),
-        // await getStreamList("https://raw.githubusercontent.com/iptv-org/iptv/master/streams/uk_rakuten.m3u"),
-        // await getStreamList("https://raw.githubusercontent.com/iptv-org/iptv/master/streams/uk.m3u"),
       );
 
+      // remove dupes, and sort
       streams = Object.fromEntries(Object.entries(streams).sort((a,b) => a[1].desc.localeCompare(b[1].desc)));
 
       const selectStreams = document.getElementById("streams");
@@ -243,9 +247,13 @@
       else
         streams.removeAttribute("show");
     }
+
+    function load() {
+      getStreams();
+    }
   </script>
 </head>
-<body>
+<body onload="load()">
 
   <div id="icons">
     <svg id="iplayer-nav-icon-bbcfour-active" viewBox="0 0 76 32">
@@ -271,48 +279,56 @@
   </div>
 
   <div class="horizontal">
-    <md-list id="streams" onclick="streamChange(event)" style="overflow:auto;max-width: 300px;">
+    <md-list id="streams" onclick="streamChange(event)"></md-list>
     </md-list>
-  <div class="vertical">
-    <div id="videoContainer">
-      <video id="video" controls></video>
-    </div>
-
-    <div style="display:flex;align-items:center;column-gap:1em;justify-content:center;margin:1em 3em">
-      <md-switch icons onchange="toggleChannels(event)"></md-switch>
-      <md-filled-text-field id="url" label="url" style="flex:auto"></md-filled-text-field>
-      <md-filled-button onclick="watchUrl()">Go</md-filled-button>
-    </div>
-
-    <div id="channels" onclick="watch(event)">
-      <md-text-button channel="bbcone">
-        <svg><use href="#iplayer-nav-icon-bbcone-active"></use></svg>
-      </md-text-button>
-
-      <md-text-button channel="bbctwo">
-        <svg><use href="#iplayer-nav-icon-bbctwo-active"></use></svg>
-      </md-text-button>
-
-      <md-text-button channel="bbcthree">
-        <svg><use href="#iplayer-nav-icon-bbcthree-active"></use></svg>
-      </md-text-button>
-
-      <md-text-button channel="bbcfour">
-        <svg><use href="#iplayer-nav-icon-bbcfour-active"></use></svg>
-      </md-text-button>
-
-      <md-text-button channel="bbcnews">
-        <svg><use href="#iplayer-nav-icon-bbcnews-active"></use></svg>
-      </md-text-button>
-
-      <md-text-button channel="redbuttonone">
-        <img src="https://upload.wikimedia.org/wikipedia/commons/a/a3/BBC_Red_Button_2021.svg" style="padding:5px;height:calc(var(--graphic-height)-2.5px);background-color:white" />
-      </md-text-button>
+    <div class="vertical">
+      <div id="videoContainer">
+        <video id="video" controls></video>
+      </div>
+  
+      <div style="display:flex;align-items:center;column-gap:1em;justify-content:center;margin:1em 3em">
+        <md-switch onchange="toggleChannels(event)"></md-switch>
+        <md-filled-text-field id="url" label="url" style="flex:auto"></md-filled-text-field>
+        <md-filled-button onclick="watchUrl()">Go</md-filled-button>
+      </div>
+  
+      <div id="channels" onclick="watch(event)">
+        <md-text-button channel="bbcone">
+          <svg>
+            <use href="#iplayer-nav-icon-bbcone-active"></use>
+          </svg>
+        </md-text-button>
+  
+        <md-text-button channel="bbctwo">
+          <svg>
+            <use href="#iplayer-nav-icon-bbctwo-active"></use>
+          </svg>
+        </md-text-button>
+  
+        <md-text-button channel="bbcthree">
+          <svg>
+            <use href="#iplayer-nav-icon-bbcthree-active"></use>
+          </svg>
+        </md-text-button>
+  
+        <md-text-button channel="bbcfour">
+          <svg>
+            <use href="#iplayer-nav-icon-bbcfour-active"></use>
+          </svg>
+        </md-text-button>
+  
+        <md-text-button channel="bbcnews">
+          <svg>
+            <use href="#iplayer-nav-icon-bbcnews-active"></use>
+          </svg>
+        </md-text-button>
+  
+        <md-text-button channel="redbuttonone">
+          <img src="https://upload.wikimedia.org/wikipedia/commons/a/a3/BBC_Red_Button_2021.svg"
+            style="padding:5px;height:calc(var(--graphic-height)-2.5px);background-color:white" />
+        </md-text-button>
+      </div>
     </div>
   </div>
-  </div>
-  <script>
-    getStreams();
-  </script>
 </body>
 </html>
