@@ -246,6 +246,18 @@
 
     function load() {
       getStreams();
+
+      addEventListener("keydown", e => {
+        const video = document.querySelector("#video");
+
+        if (e.composedPath()[0].tagName == "INPUT") return;
+
+        switch(e.key) {
+          case "f":
+            video.webkitDisplayingFullscreen ? video.webkitExitFullScreen() : video.webkitEnterFullScreen();
+            break;
+        }
+      });
     }
   </script>
 </head>
