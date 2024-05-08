@@ -160,12 +160,24 @@
 
       hls.detachMedia(video);
 
+      if (url === "") {
+        const video = document.getElementById("video");
+        video.pause();
+        video.removeAttribute('src');
+        video.load();
+        return;
+      }
+
       if (url.endsWith(".mpd")) {
         dashPlayer.initialize(video, url, true);
       } else {
         hls.loadSource(url);
         hls.attachMedia(video);
       }
+    }
+
+    function clearUrl() {
+       setUrl("");
     }
 
     async function getStreams() {
@@ -254,7 +266,7 @@
 
         switch(e.key) {
           case "f":
-            video.webkitDisplayingFullscreen ? video.webkitExitFullScreen() : video.webkitEnterFullScreen();
+            document.fullscreen ? document.exitFullscreen() : video.requestFullscreen();
             break;
         }
       });
@@ -298,6 +310,7 @@
         <md-switch onchange="toggleChannels(event)"></md-switch>
         <md-filled-text-field id="url" label="url" style="flex:auto"></md-filled-text-field>
         <md-filled-button onclick="watchUrl()">Go</md-filled-button>
+        <md-filled-button onclick="clearUrl()">Clear</md-filled-button>
       </div>
   
       <div id="channels" onclick="watch(event)">
