@@ -1,4 +1,4 @@
-import {LitElement, css, html} from 'https://cdn.jsdelivr.net/gh/lit/dist@3/core/lit-core.min.js';
+import {LitElement, css, html, repeat} from 'https://cdn.jsdelivr.net/gh/lit/dist@3.1.3/all/lit-all.min.js';
 import Hls from 'https://cdn.jsdelivr.net/npm/hls.js@1.5.8/+esm';
 import dashjs from 'https://cdn.jsdelivr.net/npm/dashjs@4.7.4/+esm';
 import 'https://esm.run/@material/web/all.js';
@@ -14,6 +14,7 @@ export class TvPlayer extends LitElement {
     :host {
       --graphic-width: 80px;
       --graphic-height: 40px;
+      font-family: system-ui;
     }
 
     .vertical {
@@ -76,12 +77,15 @@ export class TvPlayer extends LitElement {
 
     .tvg-logo {
       width: 30px;
+      height: 30px;
+      object-fit: contain;
     }
 
     #streamList {
       width: 0px;
       overflow: auto;
       transition: width .2s ease-in-out;
+      background-color: white;
     }
 
     #streamList[show] {
@@ -92,8 +96,24 @@ export class TvPlayer extends LitElement {
       overflow: auto;
     }
 
-    md-list-item {
-      text-wrap: nowrap;
+    .channel {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 1em;
+      align-items: center;
+      padding: 0.5em;
+      border-bottom: 1px solid whitesmoke;
+    }
+
+    .channel:hover {
+      background-color: silver;
+      cursor: default;
+    }
+
+    .channel > div {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
   `;
 
@@ -124,7 +144,7 @@ export class TvPlayer extends LitElement {
 
     this.dashPlayer = dashjs.MediaPlayer().create();
 
-    this.addEventListener("keydown", e => {
+    window.addEventListener("keydown", e => {
       const video = this.renderRoot.querySelector("#video");
 
       if (e.composedPath()[0].tagName == "INPUT") return;
@@ -210,27 +230,37 @@ export class TvPlayer extends LitElement {
 
     const streams = {};
 
+    let getUrl = false;
+    let tvgId;
+
     for (let n = 0; n < d.length; n++) {
       const e = d[n];
 
-      if (!e.startsWith("#EXTINF:")) continue;
+      if (!getUrl) {
+        if (!e.startsWith("#EXTINF:")) continue;
+      } else {
+        if (e.startsWith("#EXT")) continue;
 
-      const ex = e.split(",");
-      const desc = ex[1].replace(" \[Geo-blocked\]", "");
-      const tvgId = e.match(/tvg-id="(.*?)"/)[1] || desc;
+        streams[tvgId].url = e;
+
+        getUrl = false;
+
+        continue;
+      }
+
+      const desc = e.match(/([^,]+)$/)[1].replace(" \[Geo-blocked\]", "");
+      tvgId = e.match(/tvg-id="(.*?)"/)[1] || desc;
       const logo = e.match(/tvg-logo="(.*?)"/)[1];
-
-      const url = d[n+1];
 
       if (streams[tvgId] === undefined) {
         streams[tvgId] = {
+          id: tvgId,
           desc: desc,
-          url: url,
           logo: logo,
         }
-      }
 
-      n++;
+        getUrl = true;
+      }
     }
 
     return streams;
@@ -245,8 +275,9 @@ export class TvPlayer extends LitElement {
   }
 
   streamChange(e) {
-    const button = e.target.closest("md-list-item");
-    this.setUrl(button.getAttribute("value"));
+    const channel = e.target.closest(".channel");
+    const stream = this.streams[channel.getAttribute("stream")];
+    this.setUrl(stream.url);
   }
 
   toggleChannels(e) {
@@ -301,15 +332,18 @@ export class TvPlayer extends LitElement {
   <div class="horizontal">
     <div class="vertical" id="streamList">
       <md-filled-text-field id="streamFilter" label="Filter" @input="${this.streamFilterInput}"></md-filled-text-field>
-      <md-list id="streams" @click="${this.streamChange}">
-      ${this.getFilteredStreamList(this.streams).map(stream =>
-        html`
-        <md-list-item type="button" value="${stream.url}">
-          <div>${stream.desc}</div><img class="tvg-logo" loading="lazy" slot="start" src="${stream.logo}"></img>
-        </md-list-item>
+      <div id="streams" @click="${this.streamChange}">
+      ${repeat(
+        this.getFilteredStreamList(this.streams),
+        (stream) => stream.id,
+        (stream, index) => html`
+        <div class="channel" stream="${stream.id}">
+          <img class="tvg-logo" loading="lazy" slot="start" src="${stream.logo}"></img>
+          <div>${stream.desc}</div>
+        </div>
         `
       )}
-      </md-list>
+      </div>
     </div>
     <div class="vertical">
       <div id="videoContainer">
