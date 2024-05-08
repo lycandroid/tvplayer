@@ -115,21 +115,20 @@
     }
   </style>
   <script>
+    let streams = {};
+
     const hls = new Hls();
     hls.on(Hls.Events.MANIFEST_PARSED, () => video.play());
 
     const dashPlayer = dashjs.MediaPlayer().create();
 
-    /*
-     * See https://github.com/iptv-org/iptv/blob/master/streams/uk_bbc.m3u for other streams
-     */
     CHANNELS = {
-      "bbcone": "https://vs-hls-push-uk.live.cf.md.bbci.co.uk/x=4/i=urn:bbc:pips:service:bbc_one_hd/t=3840/v=pv14/b=5070016/main.m3u8",
-      "bbctwo": "https://vs-hls-push-uk.live.cf.md.bbci.co.uk/x=4/i=urn:bbc:pips:service:bbc_two_hd/t=3840/v=pv14/b=5070016/main.m3u8",
-      "bbcthree": "https://vs-hls-pushb-uk.live.cf.md.bbci.co.uk/x=4/i=urn:bbc:pips:service:bbc_three_hd/pc_hd_abr_v2.m3u8",
-      "bbcfour": "https://vs-hls-pushb-uk.live.cf.md.bbci.co.uk/x=4/i=urn:bbc:pips:service:bbc_four_hd/pc_hd_abr_v2.m3u8",
-      "bbcnews": "https://vs-hls-push-uk.live.fastly.md.bbci.co.uk/x=4/i=urn:bbc:pips:service:bbc_news_channel_hd/pc_hd_abr_v2.m3u8",
-      "redbuttonone": "https://vs-cmaf-pushb-uk.live.cf.md.bbci.co.uk/x=4/i=urn:bbc:pips:service:red_button_one/iptv_hd_abr_v1.mpd",
+      "bbcone": "BBCOneEast.uk",
+      "bbctwo": "BBCTwoEngland.uk",
+      "bbcthree": "BBCThree.uk",
+      "bbcfour": "BBCFour.uk",
+      "bbcnews": "BBCNews.uk",
+      "redbuttonone": "BBC Red Button One (720p)",
     }
 
     function watch(e) {
@@ -138,7 +137,9 @@
 
       const channel = button.getAttribute("channel");
 
-      const url = CHANNELS[channel];
+      const id = CHANNELS[channel];
+
+      const url = streams[id].url;
 
       const video = document.getElementById('video');
 
@@ -181,7 +182,7 @@
     }
 
     async function getStreams() {
-      let streams = Object.assign({}, 
+      streams = Object.assign({}, 
         await getStreamList("https://iptv-org.github.io/iptv/countries/uk.m3u")
       );
 
@@ -216,7 +217,7 @@
 
         const ex = e.split(",");
         const desc = ex[1].replace(" \[Geo-blocked\]", "");
-        const tvgId = e.match(/tvg-id="(.*?)"/)[1];
+        const tvgId = e.match(/tvg-id="(.*?)"/)[1] || desc;
         const logo = e.match(/tvg-logo="(.*?)"/)[1];
 
         const url = d[n+1];
