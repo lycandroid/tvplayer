@@ -12,9 +12,12 @@ export default class TvPlayer extends LitElement {
 
   static styles = css`
     :host {
+      display: block;
+      height: 100%;
       --graphic-width: 80px;
       --graphic-height: 40px;
       font-family: system-ui;
+      container-type: size;
     }
 
     .vertical {
@@ -120,6 +123,12 @@ export default class TvPlayer extends LitElement {
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
+    }
+
+    @container (width < 700px) or (height < 700px) {
+      #channels {
+          display: none;
+      }
     }
   `;
 
@@ -340,7 +349,7 @@ export default class TvPlayer extends LitElement {
   <div class="horizontal">
     <div class="vertical" id="streamList">
       <div class="vertical" style="width:300px">
-        <md-filled-text-field id="streamFilter" label="Filter" @input="${this.streamFilterInput}"></md-filled-text-field>
+        <md-filled-text-field id="streamFilter" placeholder="Filter" @input="${this.streamFilterInput}"></md-filled-text-field>
         <div id="streams" @click="${this.streamChange}">
         ${repeat(
           this.getFilteredStreamList(this.streams),
@@ -362,7 +371,7 @@ export default class TvPlayer extends LitElement {
 
       <div style="display:flex;align-items:center;column-gap:1em;justify-content:center;margin:1em 3em">
         <md-switch @change="${this.toggleChannels}"></md-switch>
-        <md-filled-text-field id="url" label="url" style="flex:auto"></md-filled-text-field>
+        <md-filled-text-field id="url" placeholder="url" style="flex:auto"></md-filled-text-field>
         <md-filled-button @click="${this.watchUrl}">Go</md-filled-button>
         <md-filled-button @click="${this.clearUrl}">Clear</md-filled-button>
       </div>
@@ -404,7 +413,8 @@ export default class TvPlayer extends LitElement {
         </md-text-button>
       </div>
     </div>
-  </div>`;
+  </div>
+  `;
   }
 }
 customElements.define('tv-player', TvPlayer);
