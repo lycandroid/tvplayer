@@ -3,7 +3,7 @@ import Hls from 'https://cdn.jsdelivr.net/npm/hls.js@1.5.8/+esm';
 import dashjs from 'https://cdn.jsdelivr.net/npm/dashjs@4.7.4/+esm';
 import 'https://esm.run/@material/web/all.js';
 
-export class TvPlayer extends LitElement {
+export default class TvPlayer extends LitElement {
   static properties = {
     playlist: {},
     streams: {type:Object},
@@ -131,7 +131,7 @@ export class TvPlayer extends LitElement {
       "redbuttonone": "BBC Red Button One (720p)",
     }
   }
-
+  
   async firstUpdated() {
     super.firstUpdated()
 
@@ -292,6 +292,8 @@ export class TvPlayer extends LitElement {
     let filter = e.target.value;
     if (filter.length == 0) filter = null;
     this.streamFilter = filter;
+
+    this.renderRoot.querySelector("#streams").scrollTo(0,0);
   }
 
   getFilteredStreamList(streamList) {
