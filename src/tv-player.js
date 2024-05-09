@@ -83,16 +83,22 @@ export default class TvPlayer extends LitElement {
 
     #streamList {
       width: 0px;
-      overflow: auto;
-      transition: width .2s ease-in-out;
+      overflow: hidden;
       background-color: white;
+      flex: none;
+      transition: width .2s ease-in-out;
     }
 
     #streamList[show] {
-      width: 400px;
+      width: 300px;
+    }
+
+    #streamList[show] #streams {
+      display: initial;
     }
 
     #streams {
+      display: none;
       overflow: auto;
     }
 
@@ -333,18 +339,20 @@ export default class TvPlayer extends LitElement {
 
   <div class="horizontal">
     <div class="vertical" id="streamList">
-      <md-filled-text-field id="streamFilter" label="Filter" @input="${this.streamFilterInput}"></md-filled-text-field>
-      <div id="streams" @click="${this.streamChange}">
-      ${repeat(
-        this.getFilteredStreamList(this.streams),
-        (stream) => stream.id,
-        (stream, index) => html`
-        <div class="channel" stream="${stream.id}">
-          <img class="tvg-logo" loading="lazy" slot="start" src="${stream.logo}"></img>
-          <div>${stream.desc}</div>
+      <div class="vertical" style="width:300px">
+        <md-filled-text-field id="streamFilter" label="Filter" @input="${this.streamFilterInput}"></md-filled-text-field>
+        <div id="streams" @click="${this.streamChange}">
+        ${repeat(
+          this.getFilteredStreamList(this.streams),
+          (stream) => stream.id,
+          (stream, index) => html`
+          <div class="channel" stream="${stream.id}">
+            <img class="tvg-logo" loading="lazy" slot="start" src="${stream.logo}"></img>
+            <div>${stream.desc}</div>
+          </div>
+          `
+        )}
         </div>
-        `
-      )}
       </div>
     </div>
     <div class="vertical">
