@@ -143,7 +143,7 @@ export default class TvPlayer extends LitElement {
       "bbcthree": "BBCThree.uk",
       "bbcfour": "BBCFour.uk",
       "bbcnews": "BBCNews.uk",
-      "redbuttonone": "BBC Red Button One (720p)",
+      "redbuttonone": "https://vs-cmaf-pushb-uk.live.cf.md.bbci.co.uk/x=4/i=urn:bbc:pips:service:red_button_one/iptv_hd_abr_v1.mpd",
     }
   }
   
@@ -180,7 +180,11 @@ export default class TvPlayer extends LitElement {
 
     const id = this.CHANNELS[channel];
 
-    const url = this.streams[id].url;
+    let url;
+    if (id.startsWith("https://"))
+      url = id;
+    else
+      url = this.streams[id].url;
 
     const video = this.renderRoot.querySelector('#video');
 
@@ -321,6 +325,14 @@ export default class TvPlayer extends LitElement {
     return streams.map(([streamId, stream]) => stream);
   }
 
+  keydownUrl(e) {
+    switch(e.key) {
+      case "Enter":
+        this.watchUrl();
+        break;
+    }
+  }
+
   render() {
     return html`
   <div id="icons">
@@ -371,7 +383,7 @@ export default class TvPlayer extends LitElement {
 
       <div style="display:flex;align-items:center;column-gap:1em;justify-content:center;margin:1em 3em">
         <md-switch @change="${this.toggleChannels}"></md-switch>
-        <md-filled-text-field id="url" placeholder="url" style="flex:auto"></md-filled-text-field>
+        <md-filled-text-field id="url" placeholder="url" style="flex:auto" @keydown="${this.keydownUrl}"></md-filled-text-field>
         <md-filled-button @click="${this.watchUrl}">Go</md-filled-button>
         <md-filled-button @click="${this.clearUrl}">Clear</md-filled-button>
       </div>
