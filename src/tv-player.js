@@ -287,6 +287,8 @@ export default class TvPlayer extends LitElement {
 
     const url = fieldUrl.value;
 
+    youtube.setAttribute("src", "");
+
     try { this.dashPlayer.reset() } catch {}
 
     this.hls.detachMedia(video);
