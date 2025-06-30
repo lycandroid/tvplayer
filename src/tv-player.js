@@ -35,6 +35,11 @@ export default class TvPlayer extends LitElement {
       height: 100%;
     }
 
+    #header {
+      flex: auto;
+      overflow: auto;
+    }
+
     #videoContainer {
       display: flex;
       flex: auto;
@@ -94,15 +99,17 @@ export default class TvPlayer extends LitElement {
     #sidePanel {
       overflow: hidden;
       background-color: white;
+      flex: none;
       width: 0px;
+      transition: width .1s ease-in-out;
     }
 
     #sidePanel[show] {
-      width: 400px;
-      transition: width .2s ease-in-out;
+      width: 300px;
     }
 
     #streamList {
+      width: 300px;
       overflow: hidden;
       flex: auto;
     }
@@ -475,78 +482,78 @@ framerate: ${this.videoFrameRate}`;
     </svg>
   </div>
 
-  <div class="horizontal">
-    <div class="vertical" id="sidePanel">
-      <div id="streamList">
-        <div class="vertical">
-          <md-filled-text-field id="streamFilter" placeholder="Filter" @input="${this.streamFilterInput}"></md-filled-text-field>
-          <div id="streams" @click="${this.streamChange}">
-          ${repeat(
-            this.getFilteredStreamList(this.streams),
-            (stream) => stream.id,
-            (stream, index) => html`
-            <div class="channel" stream="${stream.id}">
-              <img class="tvg-logo" loading="lazy" slot="start" src="${stream.logo}"></img>
-              <div>${stream.desc}</div>
-            </div>
+  <div class="vertical">
+    <div class="horizontal" id="header">
+      <div class="vertical" id="sidePanel">
+        <div id="streamList">
+          <div class="vertical">
+            <md-filled-text-field id="streamFilter" placeholder="Filter" @input="${this.streamFilterInput}"></md-filled-text-field>
+            <div id="streams" @click="${this.streamChange}">
+            ${repeat(
+              this.getFilteredStreamList(this.streams),
+              (stream) => stream.id,
+              (stream, index) => html`
+              <div class="channel" stream="${stream.id}">
+                <img class="tvg-logo" loading="lazy" slot="start" src="${stream.logo}"></img>
+                <div>${stream.desc}</div>
+              </div>
             `
           )}
+            </div>
           </div>
         </div>
+        <div id="streamInfo">
+          ${this.getStreamInfo()}
+        </div>
       </div>
-      <div id="streamInfo">
-        ${this.getStreamInfo()}
-      </div>
-    </div>
-    <div class="vertical">
       <div id="videoContainer">
         <iframe id="youtube" frameborder="0" allowfullscreen allow="autoplay"></iframe>
         <video id="video" controls></video>
       </div>
+    </div>
 
-      <div style="display:flex;align-items:center;column-gap:1em;justify-content:center;margin:1em 3em">
-        <md-switch @change="${this.toggleSidePanel}"></md-switch>
-        <md-filled-text-field id="url" placeholder="url" style="flex:auto" @keydown="${this.keydownUrl}"></md-filled-text-field>
-        <md-filled-button @click="${this.watchUrl}">Go</md-filled-button>
-        <md-filled-button @click="${this.clearUrl}">Clear</md-filled-button>
-      </div>
+    <div style="display:flex;align-items:center;column-gap:1em;justify-content:center;margin:1em 3em">
+      <md-switch @change="${this.toggleSidePanel}"></md-switch>
+      <md-filled-text-field id="url" placeholder="url" style="flex:auto" @keydown="${this.keydownUrl}"></md-filled-text-field>
+      <md-filled-button @click="${this.watchUrl}">Go</md-filled-button>
+      <md-filled-button @click="${this.clearUrl}">Clear</md-filled-button>
+    </div>
 
-      <div id="channels" @click="${this.watch}">
-        <md-text-button channel="bbcone">
-          <svg>
-            <use href="#iplayer-nav-icon-bbcone-active"></use>
-          </svg>
-        </md-text-button>
+    <div id="channels" @click="${this.watch}">
+      <md-text-button channel="bbcone">
+        <svg>
+          <use href="#iplayer-nav-icon-bbcone-active"></use>
+        </svg>
+      </md-text-button>
 
-        <md-text-button channel="bbctwo">
-          <svg>
-            <use href="#iplayer-nav-icon-bbctwo-active"></use>
-          </svg>
-        </md-text-button>
+      <md-text-button channel="bbctwo">
+        <svg>
+          <use href="#iplayer-nav-icon-bbctwo-active"></use>
+        </svg>
+      </md-text-button>
 
-        <md-text-button channel="bbcthree">
-          <svg>
-            <use href="#iplayer-nav-icon-bbcthree-active"></use>
-          </svg>
-        </md-text-button>
+      <md-text-button channel="bbcthree">
+        <svg>
+          <use href="#iplayer-nav-icon-bbcthree-active"></use>
+        </svg>
+      </md-text-button>
 
-        <md-text-button channel="bbcfour">
-          <svg>
-            <use href="#iplayer-nav-icon-bbcfour-active"></use>
-          </svg>
-        </md-text-button>
+      <md-text-button channel="bbcfour">
+        <svg>
+          <use href="#iplayer-nav-icon-bbcfour-active"></use>
+        </svg>
+      </md-text-button>
 
-        <md-text-button channel="bbcnews">
-          <svg>
-            <use href="#iplayer-nav-icon-bbcnews-active"></use>
-          </svg>
-        </md-text-button>
+      <md-text-button channel="bbcnews">
+        <svg>
+          <use href="#iplayer-nav-icon-bbcnews-active"></use>
+        </svg>
+      </md-text-button>
 
-        <md-text-button channel="redbuttonone">
-          <img src="https://upload.wikimedia.org/wikipedia/commons/a/a3/BBC_Red_Button_2021.svg"
-            style="padding:5px;height:calc(var(--graphic-height)-2.5px);background-color:white" />
-        </md-text-button>
-      </div>
+      <md-text-button channel="redbuttonone">
+        <img src="https://upload.wikimedia.org/wikipedia/commons/a/a3/BBC_Red_Button_2021.svg"
+          style="padding:5px;height:calc(var(--graphic-height)-2.5px);background-color:white" />
+      </md-text-button>
     </div>
   </div>
   `;
