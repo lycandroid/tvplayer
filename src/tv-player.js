@@ -1,5 +1,5 @@
-import {LitElement, css, html, repeat} from 'https://cdn.jsdelivr.net/gh/lit/dist@3.1.3/all/lit-all.min.js';
-import Hls from 'https://cdn.jsdelivr.net/npm/hls.js@1.5.8/+esm';
+import {LitElement, css, html, repeat} from 'https://cdn.jsdelivr.net/gh/lit/dist@3/all/lit-all.min.js';
+import Hls from 'https://cdn.jsdelivr.net/npm/hls.js@1.5.17/+esm';
 import dashjs from 'https://cdn.jsdelivr.net/npm/dashjs@4.7.4/+esm';
 import 'https://esm.run/@material/web/all.js';
 
@@ -8,6 +8,8 @@ export default class TvPlayer extends LitElement {
     playlist: {},
     streams: {type:Object},
     streamFilter: {type:String},
+    videoWidth: {type:Number},
+    videHeight: {type:Number},
   };
 
   static styles = css`
@@ -43,6 +45,11 @@ export default class TvPlayer extends LitElement {
       height: 100%;
       width: 100%;
       object-position: top;
+    }
+
+    #youtube {
+      display: none;
+      flex: auto;
     }
 
     #icons {
@@ -84,19 +91,23 @@ export default class TvPlayer extends LitElement {
       object-fit: contain;
     }
 
-    #streamList {
-      width: 0px;
+    #sidePanel {
       overflow: hidden;
       background-color: white;
-      flex: none;
+      width: 0px;
+    }
+
+    #sidePanel[show] {
+      width: 400px;
       transition: width .2s ease-in-out;
     }
 
-    #streamList[show] {
-      width: 300px;
+    #streamList {
+      overflow: hidden;
+      flex: auto;
     }
 
-    #streamList[show] #streams {
+    #sidePanel[show] #streams {
       display: initial;
     }
 
@@ -130,6 +141,12 @@ export default class TvPlayer extends LitElement {
           display: none;
       }
     }
+
+    #streamInfo {
+      border-top: 1px solid silver;
+      padding: 1em;
+      font-family: monospace
+    }
   `;
 
   constructor() {
@@ -138,11 +155,12 @@ export default class TvPlayer extends LitElement {
     this.streams = {};
 
     this.CHANNELS = {
-      "bbcone": "BBCOneEast.uk",
-      "bbctwo": "BBCTwoEngland.uk",
-      "bbcthree": "BBCThree.uk",
-      "bbcfour": "BBCFour.uk",
-      "bbcnews": "BBCNews.uk",
+      // "bbcone": "BBCOneEast.uk",
+      "bbcone": "https://vs-cmaf-pushb-uk-live.akamaized.net/x=4/i=urn:bbc:pips:service:bbc_one_east/pc_hd_abr_v2.mpd",
+      "bbctwo": "https://vs-cmaf-push-uk.live.fastly.md.bbci.co.uk/x=4/i=urn:bbc:pips:service:bbc_two_hd/pc_hd_abr_v2.mpd",
+      "bbcthree": "https://vs-cmaf-pushb-uk.live.fastly.md.bbci.co.uk/x=4/i=urn:bbc:pips:service:bbc_three_hd/iptv_hd_abr_v1.mpd",
+      "bbcfour": "https://vs-cmaf-pushb-uk.live.fastly.md.bbci.co.uk/x=4/i=urn:bbc:pips:service:bbc_four_hd/iptv_hd_abr_v1.mpd",
+      "bbcnews": "https://vs-cmaf-push-ww-live.akamaized.net/x=4/i=urn:bbc:pips:service:bbc_news_channel_hd/iptv_hd_abr_v1.mpd",
       "redbuttonone": "https://vs-cmaf-pushb-uk.live.cf.md.bbci.co.uk/x=4/i=urn:bbc:pips:service:red_button_one/iptv_hd_abr_v1.mpd",
     }
   }
@@ -150,9 +168,33 @@ export default class TvPlayer extends LitElement {
   async firstUpdated() {
     super.firstUpdated()
 
+    const youtube = this.renderRoot.querySelector("#youtube");
+
+    window.addEventListener('dragover', e => {
+      e.preventDefault();
+    }, true);
+
+    window.addEventListener("drop", e => {
+      const url = e.dataTransfer.getData("text/uri-list");
+      if (url == null) return;
+
+      e.preventDefault();
+
+      this.setUrl(url);
+    }, true);
+
     this.streams = await this.getStreams();
 
     const video = this.renderRoot.querySelector("#video");
+
+    video.addEventListener("resize", e => {
+      this.videoWidth = video.videoWidth
+      this.videoHeight = video.videoHeight
+
+      const meta = this.getVideoMeta();
+
+      this.videoFrameRate = meta.frameRate;
+    });
 
     this.hls = new Hls();
     this.hls.on(Hls.Events.MANIFEST_PARSED, () => video.play());
@@ -170,6 +212,39 @@ export default class TvPlayer extends LitElement {
           break;
       }
     });
+  }
+
+  getVideoMeta() {
+    if (this.dashPlayer.isReady()) {
+      return this.getDashPlayerVideoMeta();
+    }
+
+    return this.getHlsPlayerVideoMeta();
+  }
+
+  getDashPlayerVideoMeta() {
+    const player = this.dashPlayer;
+    const streamInfo = player.getActiveStream().getStreamInfo();
+    const dashMetrics = player.getDashMetrics();
+    const dashAdapter = player.getDashAdapter();
+
+    const periodIdx = streamInfo.index;
+    const repSwitch = dashMetrics.getCurrentRepresentationSwitch('video', true);
+    const bufferLevel = dashMetrics.getCurrentBufferLevel('video', true);
+    const bitrate = repSwitch ? Math.round(dashAdapter.getBandwidthForRepresentation(repSwitch.to, periodIdx) / 1000) : NaN;
+    const adaptation = dashAdapter.getAdaptationForType(periodIdx, 'video', streamInfo);
+    const currentRep = adaptation.Representation_asArray.find(function (rep) {
+      return rep.id === repSwitch.to
+    })
+    const frameRate = currentRep.frameRate;
+    const resolution = currentRep.width + 'x' + currentRep.height;
+
+    return { frameRate, resolution, bitrate };
+  }
+
+  getHlsPlayerVideoMeta() {
+    const frameRate = "unknown", resolution = "unknown", bitrate = "unknown";
+    return { frameRate, resolution, bitrate };
   }
 
   watch(e) {
@@ -199,6 +274,7 @@ export default class TvPlayer extends LitElement {
 
   watchUrl() {
     const video = this.renderRoot.getElementById('video');
+    const youtube = this.renderRoot.getElementById('youtube');
 
     const fieldUrl  = this.renderRoot.getElementById('url');
 
@@ -216,7 +292,17 @@ export default class TvPlayer extends LitElement {
       return;
     }
 
-    if (url.endsWith(".mpd")) {
+    video.style.display = "";
+    youtube.style.display = "none";
+
+    if (url.startsWith("https://www.youtube.com/")) {
+      video.style.display = "none";
+      youtube.style.display = "block";
+      const yturl = new URL(url);
+      const v = yturl.searchParams.get("v");
+      youtube.setAttribute("src", `https://www.youtube.com/embed/${v}?autoplay=1`);
+    }
+    else if (url.endsWith(".mpd")) {
       this.dashPlayer.initialize(video, url, true);
     } else {
       this.hls.loadSource(url);
@@ -225,6 +311,11 @@ export default class TvPlayer extends LitElement {
   }
 
   clearUrl() {
+    const video = this.renderRoot.getElementById('video');
+    const youtube = this.renderRoot.getElementById('youtube');
+    video.style.display = "";
+    youtube.style.display = "none";
+    youtube.setAttribute("src", "");
     this.setUrl("");
   }
 
@@ -235,7 +326,11 @@ export default class TvPlayer extends LitElement {
     );
 
     // remove dupes, and sort
-    streams = Object.fromEntries(Object.entries(streams).sort((a,b) => a[1].desc.localeCompare(b[1].desc)));
+    var collator = new Intl.Collator('en', {numeric: true, sensitivity: 'base'});
+
+    streams = Object.fromEntries(
+      Object.entries(streams).sort((a,b) => collator.compare(a[1].desc, b[1].desc))
+    );
 
     return streams;
   }
@@ -252,13 +347,21 @@ export default class TvPlayer extends LitElement {
     let getUrl = false;
     let tvgId;
 
+    const regexBbcRedButton = new RegExp('urn:bbc:pips:service:uk_sport_stream_');
+
     for (let n = 0; n < d.length; n++) {
-      const e = d[n];
+      let e = d[n];
 
       if (!getUrl) {
         if (!e.startsWith("#EXTINF:")) continue;
       } else {
         if (e.startsWith("#EXT")) continue;
+
+        if (regexBbcRedButton.test(e)) {
+          e = e.replace("/x=3/", "/x=4/");
+        }
+
+        e = e.trim();
 
         streams[tvgId].url = e;
 
@@ -299,12 +402,12 @@ export default class TvPlayer extends LitElement {
     this.setUrl(stream.url);
   }
 
-  toggleChannels(e) {
-    const streams = this.renderRoot.querySelector("#streamList");
+  toggleSidePanel(e) {
+    const sidePanel = this.renderRoot.querySelector("#sidePanel");
     if (e.target.selected)
-      streams.setAttribute("show", "");
+      sidePanel.setAttribute("show", "");
     else
-      streams.removeAttribute("show");
+      sidePanel.removeAttribute("show");
   }
 
   streamFilterInput(e) {
@@ -325,6 +428,12 @@ export default class TvPlayer extends LitElement {
     return streams.map(([streamId, stream]) => stream);
   }
 
+  getStreamInfo() {
+    return html`resolution: ${this.videoWidth}x${this.videoHeight}
+<br>
+framerate: ${this.videoFrameRate}`;
+  }
+
   keydownUrl(e) {
     switch(e.key) {
       case "Enter":
@@ -334,6 +443,14 @@ export default class TvPlayer extends LitElement {
   }
 
   render() {
+    /*
+    return html`
+<md-chip-set style="background-color:white">
+  <md-input-chip label="Ping Qiang" style="--md-input-chip-icon-size:0; --md-input-chip-icon-label-spacex:0; --md-input-chip-with-trailing-icon-trailing-space:0" >
+  </md-input-chip>
+</md-chip-set>`;
+*/
+
     return html`
   <div id="icons">
     <svg id="iplayer-nav-icon-bbcfour-active" viewBox="0 0 76 32">
@@ -359,30 +476,36 @@ export default class TvPlayer extends LitElement {
   </div>
 
   <div class="horizontal">
-    <div class="vertical" id="streamList">
-      <div class="vertical" style="width:300px">
-        <md-filled-text-field id="streamFilter" placeholder="Filter" @input="${this.streamFilterInput}"></md-filled-text-field>
-        <div id="streams" @click="${this.streamChange}">
-        ${repeat(
-          this.getFilteredStreamList(this.streams),
-          (stream) => stream.id,
-          (stream, index) => html`
-          <div class="channel" stream="${stream.id}">
-            <img class="tvg-logo" loading="lazy" slot="start" src="${stream.logo}"></img>
-            <div>${stream.desc}</div>
+    <div class="vertical" id="sidePanel">
+      <div id="streamList">
+        <div class="vertical">
+          <md-filled-text-field id="streamFilter" placeholder="Filter" @input="${this.streamFilterInput}"></md-filled-text-field>
+          <div id="streams" @click="${this.streamChange}">
+          ${repeat(
+            this.getFilteredStreamList(this.streams),
+            (stream) => stream.id,
+            (stream, index) => html`
+            <div class="channel" stream="${stream.id}">
+              <img class="tvg-logo" loading="lazy" slot="start" src="${stream.logo}"></img>
+              <div>${stream.desc}</div>
+            </div>
+            `
+          )}
           </div>
-          `
-        )}
         </div>
+      </div>
+      <div id="streamInfo">
+        ${this.getStreamInfo()}
       </div>
     </div>
     <div class="vertical">
       <div id="videoContainer">
+        <iframe id="youtube" frameborder="0" allowfullscreen allow="autoplay"></iframe>
         <video id="video" controls></video>
       </div>
 
       <div style="display:flex;align-items:center;column-gap:1em;justify-content:center;margin:1em 3em">
-        <md-switch @change="${this.toggleChannels}"></md-switch>
+        <md-switch @change="${this.toggleSidePanel}"></md-switch>
         <md-filled-text-field id="url" placeholder="url" style="flex:auto" @keydown="${this.keydownUrl}"></md-filled-text-field>
         <md-filled-button @click="${this.watchUrl}">Go</md-filled-button>
         <md-filled-button @click="${this.clearUrl}">Clear</md-filled-button>

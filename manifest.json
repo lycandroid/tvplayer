@@ -1,0 +1,16 @@
+{
+  "short_name": "TVPlayer",
+  "name": "TVPlayer",
+  "icons": [
+    {
+      "src": "tvplayer.svg",
+      "sizes": "any",
+      "purpose": "any",
+      "type": "image/svg+xml"
+    }
+  ],
+  "start_url": "/tvplayer/",
+  "background_color": "#000000",
+  "display": "minimal-ui",
+  "theme_color": "#000000"
+}
