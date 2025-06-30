@@ -96,6 +96,10 @@ export default class TvPlayer extends LitElement {
       object-fit: contain;
     }
 
+    .tvg-logo.loadfail {
+      visibility: hidden;
+    }
+
     #sidePanel {
       overflow: hidden;
       background-color: white;
@@ -496,7 +500,7 @@ framerate: ${this.videoFrameRate}`;
               (stream) => stream.id,
               (stream, index) => html`
               <div class="channel" stream="${stream.id}">
-                <img class="tvg-logo" loading="lazy" slot="start" src="${stream.logo}"></img>
+                <img class="tvg-logo" loading="lazy" slot="start" src="${stream.logo}" onerror="this.classList.add('loadfail');"></img>
                 <div>${stream.desc}</div>
               </div>
             `
