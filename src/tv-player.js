@@ -1,6 +1,6 @@
 import {LitElement, css, html, repeat} from 'https://cdn.jsdelivr.net/gh/lit/dist@3/all/lit-all.min.js';
-import Hls from 'https://cdn.jsdelivr.net/npm/hls.js@1.5.17/+esm';
-import dashjs from 'https://cdn.jsdelivr.net/npm/dashjs@4.7.4/+esm';
+import Hls from 'https://cdn.jsdelivr.net/npm/hls.js@1.6.5/+esm';
+import {MediaPlayer} from 'https://cdn.jsdelivr.net/npm/dashjs@5.0.3/+esm';
 import 'https://esm.run/@material/web/all.js';
 
 export default class TvPlayer extends LitElement {
@@ -9,7 +9,8 @@ export default class TvPlayer extends LitElement {
     streams: {type:Object},
     streamFilter: {type:String},
     videoWidth: {type:Number},
-    videHeight: {type:Number},
+    videoHeight: {type:Number},
+    selectedChannel: {type:Element},
   };
 
   static styles = css`
@@ -133,7 +134,6 @@ export default class TvPlayer extends LitElement {
       gap: 1em;
       align-items: center;
       padding: 0.5em;
-      border-bottom: 1px solid whitesmoke;
     }
 
     .channel:hover {
@@ -145,6 +145,14 @@ export default class TvPlayer extends LitElement {
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
+    }
+
+    .channel[selected] {
+      background: linear-gradient(45deg, silver, white);
+    }
+
+    .channel:focus {
+      outline: 1px dotted gray;
     }
 
     @container (width < 700px) or (height < 700px) {
@@ -210,7 +218,7 @@ export default class TvPlayer extends LitElement {
     this.hls = new Hls();
     this.hls.on(Hls.Events.MANIFEST_PARSED, () => video.play());
 
-    this.dashPlayer = dashjs.MediaPlayer().create();
+    this.dashPlayer = MediaPlayer().create();
 
     window.addEventListener("keydown", e => {
       const video = this.renderRoot.querySelector("#video");
@@ -235,20 +243,11 @@ export default class TvPlayer extends LitElement {
 
   getDashPlayerVideoMeta() {
     const player = this.dashPlayer;
-    const streamInfo = player.getActiveStream().getStreamInfo();
-    const dashMetrics = player.getDashMetrics();
-    const dashAdapter = player.getDashAdapter();
+    const currentRep = player.getCurrentRepresentationForType('video')
 
-    const periodIdx = streamInfo.index;
-    const repSwitch = dashMetrics.getCurrentRepresentationSwitch('video', true);
-    const bufferLevel = dashMetrics.getCurrentBufferLevel('video', true);
-    const bitrate = repSwitch ? Math.round(dashAdapter.getBandwidthForRepresentation(repSwitch.to, periodIdx) / 1000) : NaN;
-    const adaptation = dashAdapter.getAdaptationForType(periodIdx, 'video', streamInfo);
-    const currentRep = adaptation.Representation_asArray.find(function (rep) {
-      return rep.id === repSwitch.to
-    })
     const frameRate = currentRep.frameRate;
     const resolution = currentRep.width + 'x' + currentRep.height;
+    const bitrate = currentRep.bitrateInKbit;
 
     return { frameRate, resolution, bitrate };
   }
@@ -409,16 +408,57 @@ export default class TvPlayer extends LitElement {
     this.watchUrl();
   }
 
+  keyDownStream(e) {
+    const channel = this.selectedChannel;
+    if (channel == null) return;
+
+    let newChannel;
+
+    switch (e.key) {
+      case "/":
+        const streamFilter = this.renderRoot.querySelector("#streamFilter");
+        streamFilter.focus();
+        e.preventDefault();
+        return;
+      case "ArrowUp":
+      case "ArrowDown":
+        newChannel = e.key == "ArrowUp" ? channel.previousElementSibling : channel.nextElementSibling;;
+        if (newChannel == null) return;
+
+        e.preventDefault();
+
+        this.setSelectedChannel(newChannel);
+        break;
+    }
+  }
+
   streamChange(e) {
     const channel = e.target.closest(".channel");
+
+    this.setSelectedChannel(channel);
+  }
+
+  setSelectedChannel(channel) {
+    if (this.selectedChannel) {
+      this.selectedChannel.removeAttribute("selected");
+    }
+
+    this.selectedChannel = channel;
+
+    channel.setAttribute("selected", "");
+    channel.focus();
+
     const stream = this.streams[channel.getAttribute("stream")];
     this.setUrl(stream.url);
   }
 
   toggleSidePanel(e) {
     const sidePanel = this.renderRoot.querySelector("#sidePanel");
-    if (e.target.selected)
+    if (e.target.selected) {
       sidePanel.setAttribute("show", "");
+      const streamFilter = this.renderRoot.querySelector("#streamFilter");
+      streamFilter.focus();
+    }
     else
       sidePanel.removeAttribute("show");
   }
@@ -494,12 +534,12 @@ framerate: ${this.videoFrameRate}`;
         <div id="streamList">
           <div class="vertical">
             <md-filled-text-field id="streamFilter" placeholder="Filter" @input="${this.streamFilterInput}"></md-filled-text-field>
-            <div id="streams" @click="${this.streamChange}">
+            <div id="streams" @click="${this.streamChange}" @keydown="${this.keyDownStream}">
             ${repeat(
               this.getFilteredStreamList(this.streams),
               (stream) => stream.id,
               (stream, index) => html`
-              <div class="channel" stream="${stream.id}">
+              <div class="channel" stream="${stream.id}" tabindex="0">
                 <img class="tvg-logo" loading="lazy" slot="start" src="${stream.logo}" onerror="this.classList.add('loadfail');"></img>
                 <div>${stream.desc}</div>
               </div>
