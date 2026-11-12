@@ -1,5 +1,5 @@
 import {LitElement, css, html, repeat} from 'https://cdn.jsdelivr.net/gh/lit/dist@3/all/lit-all.min.js';
-import Hls from 'https://cdn.jsdelivr.net/npm/hls.js@1.6.5/+esm';
+import Hls from 'https://cdn.jsdelivr.net/npm/hls.js@1.6.13/+esm';
 import {MediaPlayer} from 'https://cdn.jsdelivr.net/npm/dashjs@5.0.3/+esm';
 import 'https://esm.run/@material/web/all.js';
 
@@ -21,6 +21,7 @@ export default class TvPlayer extends LitElement {
       --graphic-height: 40px;
       font-family: system-ui;
       container-type: size;
+      background-color: #000;
     }
 
     .vertical {
@@ -51,10 +52,12 @@ export default class TvPlayer extends LitElement {
       height: 100%;
       width: 100%;
       object-position: top;
+      transition: opacity 0.3s linear;
     }
 
     #youtube {
       display: none;
+      object-position: top;
       flex: auto;
     }
 
@@ -215,10 +218,18 @@ export default class TvPlayer extends LitElement {
       this.videoFrameRate = meta.frameRate;
     });
 
+    video.addEventListener("mouseover", e => video.controls = true);
+
+    video.addEventListener("mouseout", e => video.controls = false);
+
     this.hls = new Hls();
     this.hls.on(Hls.Events.MANIFEST_PARSED, () => video.play());
 
     this.dashPlayer = MediaPlayer().create();
+
+    this.dashPlayer.on(MediaPlayer.events.PLAYBACK_PLAYING, () => {
+      this.fadeVideo("reverse");
+    });
 
     window.addEventListener("keydown", e => {
       const video = this.renderRoot.querySelector("#video");
@@ -282,7 +293,7 @@ export default class TvPlayer extends LitElement {
     button.setAttribute("selected","");
   }
 
-  watchUrl() {
+  async watchUrl() {
     const video = this.renderRoot.getElementById('video');
     const youtube = this.renderRoot.getElementById('youtube');
 
@@ -292,10 +303,6 @@ export default class TvPlayer extends LitElement {
 
     youtube.setAttribute("src", "");
 
-    try { this.dashPlayer.reset() } catch {}
-
-    this.hls.detachMedia(video);
-
     if (url === "") {
       const video = this.renderRoot.getElementById("video");
       video.pause();
@@ -304,22 +311,68 @@ export default class TvPlayer extends LitElement {
       return;
     }
 
-    video.style.display = "";
-    youtube.style.display = "none";
-
     if (url.startsWith("https://www.youtube.com/")) {
+      this.clearVideo();
+
       video.style.display = "none";
       youtube.style.display = "block";
+
       const yturl = new URL(url);
-      const v = yturl.searchParams.get("v");
+      const shorts = yturl.pathname.match(/^\/shorts\/([^/?#]+)/);
+      const v = shorts ? shorts[1] : yturl.searchParams.get("v");
       youtube.setAttribute("src", `https://www.youtube.com/embed/${v}?autoplay=1`);
+      return;
     }
-    else if (url.endsWith(".mpd")) {
-      this.dashPlayer.initialize(video, url, true);
-    } else {
-      this.hls.loadSource(url);
-      this.hls.attachMedia(video);
-    }
+
+    youtube.style.display = "none";
+    video.style.display = "";
+
+    if (url.endsWith(".mpd")) {
+      await this.fadeVideo();
+
+      if (this.dashPlayer.isReady()) {
+        this.dashPlayer.attachSource(url);
+      } else {
+        this.clearHls(video);
+        this.dashPlayer.initialize(video, url, true);
+      }
+      return;
+    } 
+
+    this.clearDash();
+
+    this.hls.loadSource(url);
+    this.hls.attachMedia(video);
+  }
+
+  async fadeVideo(direction = "normal") {
+    const video = this.renderRoot.getElementById('video');
+    const animation = video.animate(
+      [
+        { opacity: 1 },
+        { opacity: 0 }
+      ],
+      {
+        duration: 125,
+        easing: 'ease-in-out',
+        fill: 'forwards',
+        direction: direction
+      }
+    );
+    await animation.finished;
+  }
+
+  clearVideo() {
+    this.clearDash();
+    this.clearHls();
+  }
+
+  clearDash() {
+    try { this.dashPlayer.reset() } catch {}
+  }
+
+  clearHls(video = this.renderRoot.getElementById('video')) {
+    this.hls.detachMedia(video);
   }
 
   clearUrl() {
@@ -439,6 +492,8 @@ export default class TvPlayer extends LitElement {
   }
 
   setSelectedChannel(channel) {
+    if (channel === this.selectedChannel) return;
+
     if (this.selectedChannel) {
       this.selectedChannel.removeAttribute("selected");
     }
@@ -505,6 +560,7 @@ framerate: ${this.videoFrameRate}`;
 */
 
     return html`
+  <link href="https://cdn.jsdelivr.net/npm/video.js@8.23.4/dist/video-js.css" rel="stylesheet" />
   <div id="icons">
     <svg id="iplayer-nav-icon-bbcfour-active" viewBox="0 0 76 32">
       <path fill="#7831eb" d="M0 0h76v32H0z"></path>
@@ -554,7 +610,7 @@ framerate: ${this.videoFrameRate}`;
       </div>
       <div id="videoContainer">
         <iframe id="youtube" frameborder="0" allowfullscreen allow="autoplay"></iframe>
-        <video id="video" controls></video>
+        <video id="video"></video>
       </div>
     </div>
 
